@@ -93,6 +93,8 @@ namespace CS408_Server
                     if (message_flag == "u")
                     {
                         username_list.Add(incoming_message); // add the username to the list of usernames
+                        listBox1.Items.Add(incoming_message); // display the username in the listbox
+                        txtInformation.AppendText(incoming_message + " has connected");
                     }
                     else if (message_flag == "g")
                     {
@@ -103,7 +105,7 @@ namespace CS408_Server
                     }
                     else
                     {
-                        txtInformation.Text = "whoopsie";
+                        txtInformation.AppendText("\nwhoopise");
                     }
                 }
                 catch
@@ -117,11 +119,6 @@ namespace CS408_Server
                     connected = false;
                 }
             }
-        }
-
-        private void GetUser()
-        {
-
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)
