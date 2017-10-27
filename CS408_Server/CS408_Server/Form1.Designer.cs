@@ -41,7 +41,7 @@
             // txtInformation
             // 
             this.txtInformation.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.txtInformation.ForeColor = System.Drawing.SystemColors.Menu;
+            this.txtInformation.ForeColor = System.Drawing.SystemColors.Desktop;
             this.txtInformation.Location = new System.Drawing.Point(12, 28);
             this.txtInformation.Name = "txtInformation";
             this.txtInformation.ReadOnly = true;
@@ -84,6 +84,7 @@
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(117, 23);
             this.textBox1.TabIndex = 4;
+            this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
             // 
             // lblPort
             // 
@@ -103,6 +104,7 @@
             this.btnListen.TabIndex = 6;
             this.btnListen.Text = "Listen";
             this.btnListen.UseVisualStyleBackColor = true;
+            this.btnListen.Click += new System.EventHandler(this.btnListen_Click);
             // 
             // btnExit
             // 
@@ -113,6 +115,7 @@
             this.btnExit.TabIndex = 7;
             this.btnExit.Text = "Exit";
             this.btnExit.UseVisualStyleBackColor = true;
+            this.btnExit.Click += new System.EventHandler(this.btnExit_Click);
             // 
             // FormServer
             // 
