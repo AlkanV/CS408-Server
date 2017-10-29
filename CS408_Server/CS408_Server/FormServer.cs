@@ -50,28 +50,37 @@ namespace CS408_Server
 
             int serverPort = Convert.ToInt32(txtPort.Text);
 
-            // Start a thread responsible for listening for new connections
-            Thread thrAccept;
-
-            try
+            if(serverPort < 0 || serverPort > 9999)
             {
-                server.Bind(new IPEndPoint(IPAddress.Any, serverPort));
-                server.Listen(3); // The parameter here is the max length of the pending connections queue!
-                // start a thread responsible for accepting the connections
-                thrAccept = new Thread(new ThreadStart(Accept));
-                thrAccept.IsBackground = true; // so that the thread stops when the program terminates!
-                thrAccept.Start();
-                serverListening = true;
-                txtInformation.Text = "Started listening for incoming connections\r\n";
-
-                //added  IP and PORT info to txtInformation
-                txtInformation.AppendText("With IP: " + getLocalIP() + "\r\n");
-                txtInformation.AppendText("With Port: " + serverPort + "\r\n");
+                MessageBox.Show("Port Number should be between 0 and 9999", "Invalid Port Number", MessageBoxButtons.OK);
             }
-            catch
+            else
             {
-                txtInformation.Text = "Cannot create a server with the specified port number!\nTerminating";
+                // Start a thread responsible for listening for new connections
+                Thread thrAccept;
+
+                try
+                {
+                    server.Bind(new IPEndPoint(IPAddress.Any, serverPort));
+                    server.Listen(3); // The parameter here is the max length of the pending connections queue!
+                                      // start a thread responsible for accepting the connections
+                    thrAccept = new Thread(new ThreadStart(Accept));
+                    thrAccept.IsBackground = true; // so that the thread stops when the program terminates!
+                    thrAccept.Start();
+                    serverListening = true;
+                    txtInformation.Text = "Started listening for incoming connections\r\n";
+
+                    //added  IP and PORT info to txtInformation
+                    txtInformation.AppendText("With IP: " + getLocalIP() + "\r\n");
+                    txtInformation.AppendText("With Port: " + serverPort + "\r\n");
+                }
+                catch
+                {
+                    txtInformation.Text = "Cannot create a server with the specified port number!\nTerminating";
+                }
+
             }
+
         }
 
         private void Accept()
