@@ -33,11 +33,22 @@ namespace CS408_Server
             InitializeComponent();
         }
 
+        private string getLocalIP() //Returns the ip of the server
+        {
+            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (IPAddress ip in host.AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    return ip.ToString();
+            }
+            return "127.0.0.1";
+        }
+
         private void btnListen_Click(object sender, EventArgs e)
         {
             // Post-condition: Start listening for connections on the specified IP & Port
 
-            int serverPort = Convert.ToInt32(textBox1.Text);
+            int serverPort = Convert.ToInt32(txtPort.Text);
 
             // Start a thread responsible for listening for new connections
             Thread thrAccept;
@@ -51,7 +62,11 @@ namespace CS408_Server
                 thrAccept.IsBackground = true; // so that the thread stops when the program terminates!
                 thrAccept.Start();
                 serverListening = true;
-                txtInformation.Text = "Started listening for incoming connections";
+                txtInformation.Text = "Started listening for incoming connections\r\n";
+
+                //added  IP and PORT info to txtInformation
+                txtInformation.AppendText("With IP: " + getLocalIP() + "\r\n");
+                txtInformation.AppendText("With Port: " + serverPort + "\r\n");
             }
             catch
             {
@@ -163,11 +178,6 @@ namespace CS408_Server
             }
         }
 
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
         private void btnExit_Click(object sender, EventArgs e)
         {
             txtInformation.AppendText("\nTerminating connections");
@@ -179,11 +189,6 @@ namespace CS408_Server
                 connection.Close();
             }
             System.Windows.Forms.Application.Exit();
-        }
-
-        private void txtInformation_TextChanged(object sender, EventArgs e)
-        {
-
         }
     }
 }
