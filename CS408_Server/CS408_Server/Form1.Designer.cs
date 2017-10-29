@@ -48,6 +48,7 @@
             this.txtInformation.Size = new System.Drawing.Size(475, 201);
             this.txtInformation.TabIndex = 0;
             this.txtInformation.Text = "";
+            this.txtInformation.TextChanged += new System.EventHandler(this.txtInformation_TextChanged);
             // 
             // lblInformation
             // 

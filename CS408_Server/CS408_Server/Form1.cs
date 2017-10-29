@@ -15,12 +15,19 @@ namespace CS408_Server
 {
     public partial class FormServer : Form
     {
-        bool accept = true;
-        bool listening = false;
-        bool terminating = false;
+        // 0 - Member variables
+        // 0.1 - server status
+        bool acceptConnections = true;
+        bool serverListening = false;
+        bool serverTerminating = false;
+
+        // 0.2 - Server
         Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+        // 0.3 - Client data
         List<Socket> socketList = new List<Socket>();
-        List<string> username_list;
+        List<string> username_list = new List<string>();
+
         public FormServer()
         {
             InitializeComponent();
@@ -28,19 +35,23 @@ namespace CS408_Server
 
         private void btnListen_Click(object sender, EventArgs e)
         {
+            // Post-condition: Start listening for connections on the specified IP & Port
+
             int serverPort = Convert.ToInt32(textBox1.Text);
+
+            // Start a thread responsible for listening for new connections
             Thread thrAccept;
 
             try
             {
                 server.Bind(new IPEndPoint(IPAddress.Any, serverPort));
-                Console.WriteLine("Started listening for incoming connections");
-                txtInformation.Text = "Started listening for incoming connections";
-
                 server.Listen(3); // The parameter here is the max length of the pending connections queue!
+                // start a thread responsible for accepting the connections
                 thrAccept = new Thread(new ThreadStart(Accept));
+                thrAccept.IsBackground = true; // so that the thread stops when the program terminates!
                 thrAccept.Start();
-                listening = true;
+                serverListening = true;
+                txtInformation.Text = "Started listening for incoming connections";
             }
             catch
             {
@@ -50,19 +61,21 @@ namespace CS408_Server
 
         private void Accept()
         {
-            while (accept)
+            while (serverListening)
             {
                 try
                 {
                     socketList.Add(server.Accept());
+                    // Start a thread responsible for receiving data over the new socket
                     Thread thrReceive = new Thread(new ThreadStart(Receive));
+                    thrReceive.IsBackground = true; // so that the thread stops when the program terminates!
                     thrReceive.Start();
                 }
                 catch
                 {
-                    if (terminating)
+                    if (serverTerminating)
                     {
-                        accept = false;
+                        serverListening = false;
                     }
                 }
             }
@@ -70,8 +83,13 @@ namespace CS408_Server
 
         private void Receive()
         {
+            /* There are two message flags:
+             * 1) "u|<username>" -> username input
+             * 2) "g|" -> request to get the list of players
+             */
             bool connected = true;
-            Socket connection = socketList[socketList.Count - 1];
+            int listPosition = socketList.Count - 1;
+            Socket connection = socketList[listPosition];
 
             while (connected)
             {
@@ -92,9 +110,18 @@ namespace CS408_Server
 
                     if (message_flag == "u")
                     {
-                        username_list.Add(incoming_message); // add the username to the list of usernames
-                        listBox1.Items.Add(incoming_message); // display the username in the listbox
-                        txtInformation.AppendText(incoming_message + " has connected");
+                        string username = incoming_message.Substring(2);
+                        username_list.Add(username); // add the username to the list of usernames
+                        // display the username in the listbox
+                        listBox1.Invoke((MethodInvoker)delegate
+                        {
+                           listBox1.Items.Add(username);
+                        });
+
+                        txtInformation.Invoke((MethodInvoker)delegate
+                        {
+                            txtInformation.AppendText("\n" + username + " has connected");
+                        });
                     }
                     else if (message_flag == "g")
                     {
@@ -105,18 +132,33 @@ namespace CS408_Server
                     }
                     else
                     {
-                        txtInformation.AppendText("\nwhoopise");
+                        txtInformation.Invoke((MethodInvoker)delegate
+                        {
+                            txtInformation.AppendText("\nwhoopise");
+                        });
+                        
                     }
                 }
                 catch
                 {
-                    if (!terminating)
+                    if (!serverTerminating)
                     {
-                        txtInformation.Text = "Client has disconnected!";
+                        txtInformation.Invoke((MethodInvoker)delegate
+                        {
+                            txtInformation.AppendText("\n" + username_list[listPosition] + " has disconnected");
+                        });
                     }
+                    // Close connection and remove all user data
                     connection.Close();
-                    socketList.Remove(connection);
                     connected = false;
+                    socketList.Remove(connection);
+                    username_list.RemoveAt(listPosition);
+
+                    // Remove displayed items
+                    listBox1.Invoke((MethodInvoker)delegate
+                    {
+                        listBox1.Items.RemoveAt(listPosition);
+                    });
                 }
             }
         }
@@ -129,12 +171,19 @@ namespace CS408_Server
         private void btnExit_Click(object sender, EventArgs e)
         {
             txtInformation.AppendText("\nTerminating connections");
+            serverTerminating = true;
+            serverListening = false;
             foreach(Socket connection in socketList)
             {
                 connection.Shutdown(SocketShutdown.Both);
                 connection.Close();
             }
             System.Windows.Forms.Application.Exit();
+        }
+
+        private void txtInformation_TextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }
