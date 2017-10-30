@@ -105,6 +105,17 @@ namespace CS408_Server
             }
         }
 
+        private void Broadcast(string message_flag, string message_content)
+        {
+            // message_flag is one of: "i", "e", "m"
+            // message content is the string associated with message
+            foreach (Socket client in socketList)
+            {
+                client.Send(Encoding.ASCII.GetBytes(message_flag + "|[" + DateTime.Now.ToString(@"MM\/dd\/yyyy h\:mm tt") + "] "
+                    + message_content));
+            }
+        }
+
         private void Receive()
         {
             /* There are two message flags:
@@ -135,17 +146,37 @@ namespace CS408_Server
                     if (message_flag == "u")
                     {
                         string username = incoming_message.Substring(2);
-                        username_list.Add(username); // add the username to the list of usernames
-                        // display the username in the listbox
-                        listBox1.Invoke((MethodInvoker)delegate
+                        // 1 - Check if the username is valid
+                        bool isExistingUsername = false;
+                        foreach(string existing_user in username_list)
                         {
-                           listBox1.Items.Add(username);
-                        });
+                            if (username == existing_user)
+                            {
+                                connection.Send(Encoding.ASCII.GetBytes("e|username already exists"));
+                                isExistingUsername = true;
+                                connection.Close();
+                            }
+                        }
+                        if (!isExistingUsername)
+                        {
+                            // 1 - Perform modificitions to server data
+                            username_list.Add(username); // add the username to the list of usernames
+                                                         // display the username in the listbox
+                            lstUsers.Invoke((MethodInvoker)delegate
+                            {
+                                lstUsers.Items.Add(username);
+                            });
 
-                        txtInformation.Invoke((MethodInvoker)delegate
-                        {
-                            txtInformation.AppendText("\n" + username + " has connected");
-                        });
+                            txtInformation.Invoke((MethodInvoker)delegate
+                            {
+                                txtInformation.AppendText("\n" + username + " has connected");
+                            });
+                            // 2 - Send back successful connection flag
+                            connection.Send(Encoding.ASCII.GetBytes("i|connection successful"));
+
+                            // 3 - Inform each client about the new connection
+                            Broadcast("i", username + " has connected");
+                        }
                     }
                     else if (message_flag == "g")
                     {
@@ -175,14 +206,18 @@ namespace CS408_Server
                     // Close connection and remove all user data
                     connection.Close();
                     connected = false;
+                    string disconnecting_username = username_list[listPosition];
                     socketList.Remove(connection);
                     username_list.RemoveAt(listPosition);
 
                     // Remove displayed items
-                    listBox1.Invoke((MethodInvoker)delegate
+                    lstUsers.Invoke((MethodInvoker)delegate
                     {
-                        listBox1.Items.RemoveAt(listPosition);
+                        lstUsers.Items.RemoveAt(listPosition);
                     });
+
+                    // Broadcast disconnection
+                    Broadcast("i", disconnecting_username + " has disconnected");
                 }
             }
         }
