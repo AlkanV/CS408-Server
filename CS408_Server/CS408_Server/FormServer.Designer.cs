@@ -80,10 +80,10 @@
             // txtPort
             // 
             this.txtPort.Location = new System.Drawing.Point(53, 236);
-            this.txtPort.Multiline = true;
             this.txtPort.Name = "txtPort";
-            this.txtPort.Size = new System.Drawing.Size(117, 23);
+            this.txtPort.Size = new System.Drawing.Size(117, 20);
             this.txtPort.TabIndex = 4;
+            this.txtPort.KeyDown += new System.Windows.Forms.KeyEventHandler(this.txtPort_KeyDown);
             // 
             // lblPort
             // 
@@ -99,7 +99,7 @@
             // 
             this.btnListen.Location = new System.Drawing.Point(176, 236);
             this.btnListen.Name = "btnListen";
-            this.btnListen.Size = new System.Drawing.Size(75, 24);
+            this.btnListen.Size = new System.Drawing.Size(75, 21);
             this.btnListen.TabIndex = 6;
             this.btnListen.Text = "Listen";
             this.btnListen.UseVisualStyleBackColor = true;
@@ -108,9 +108,10 @@
             // btnExit
             // 
             this.btnExit.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnExit.Location = new System.Drawing.Point(622, 239);
+            this.btnExit.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnExit.Location = new System.Drawing.Point(623, 239);
             this.btnExit.Name = "btnExit";
-            this.btnExit.Size = new System.Drawing.Size(75, 23);
+            this.btnExit.Size = new System.Drawing.Size(75, 26);
             this.btnExit.TabIndex = 7;
             this.btnExit.Text = "Exit";
             this.btnExit.UseVisualStyleBackColor = true;

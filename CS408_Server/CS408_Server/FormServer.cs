@@ -49,6 +49,7 @@ namespace CS408_Server
             // Post-condition: Start listening for connections on the specified IP & Port
 
             int serverPort = Convert.ToInt32(txtPort.Text);
+            txtPort.Clear();
 
             if(serverPort < 0 || serverPort > 9999)
             {
@@ -56,6 +57,8 @@ namespace CS408_Server
             }
             else
             {
+                txtPort.ReadOnly = true;
+                btnListen.Enabled = false;
                 // Start a thread responsible for listening for new connections
                 Thread thrAccept;
 
@@ -121,10 +124,12 @@ namespace CS408_Server
             /* There are two message flags:
              * 1) "u|<username>" -> username input
              * 2) "g|" -> request to get the list of players
+             * 3) "m|" -> chat message
+             * 4) "i|" -> info
              */
             bool connected = true;
-            int listPosition = socketList.Count - 1;
-            Socket connection = socketList[listPosition];
+            Socket connection = socketList[socketList.Count - 1];
+            string username = ""; // username of the current client
 
             while (connected)
             {
@@ -141,11 +146,12 @@ namespace CS408_Server
                     string incoming_message = Encoding.Default.GetString(buffer);
                     incoming_message = incoming_message.Substring(0, incoming_message.IndexOf('\0'));
 
-                    string message_flag = incoming_message.Substring(0, incoming_message.IndexOf('|'));
+                    string[] message_content = incoming_message.Split('|');
+                    string message_flag = message_content[0], user_message = message_content[1];
 
                     if (message_flag == "u")
                     {
-                        string username = incoming_message.Substring(2);
+                        username = user_message;
                         // 1 - Check if the username is valid
                         bool isExistingUsername = false;
                         foreach(string existing_user in username_list)
@@ -180,10 +186,18 @@ namespace CS408_Server
                     }
                     else if (message_flag == "g")
                     {
+                        txtInformation.Invoke((MethodInvoker)delegate
+                        {
+                            txtInformation.AppendText("\nSending user list to " + username);
+                        });
                         for (int i = 0; i < username_list.Count; i++)
                         {
-                            connection.Send(Encoding.ASCII.GetBytes(username_list[i]));
+                            connection.Send(Encoding.ASCII.GetBytes("g|" + username_list[i]));
                         }
+                    }
+                    else if (message_flag == "m")
+                    {
+                        Broadcast("m", username + ": " + user_message);
                     }
                     else
                     {
@@ -200,24 +214,23 @@ namespace CS408_Server
                     {
                         txtInformation.Invoke((MethodInvoker)delegate
                         {
-                            txtInformation.AppendText("\n" + username_list[listPosition] + " has disconnected");
+                            txtInformation.AppendText("\n" + username + " has disconnected");
                         });
                     }
                     // Close connection and remove all user data
                     connection.Close();
                     connected = false;
-                    string disconnecting_username = username_list[listPosition];
                     socketList.Remove(connection);
-                    username_list.RemoveAt(listPosition);
+                    username_list.Remove(username);
 
                     // Remove displayed items
                     lstUsers.Invoke((MethodInvoker)delegate
                     {
-                        lstUsers.Items.RemoveAt(listPosition);
+                        lstUsers.Items.Remove(username);
                     });
 
                     // Broadcast disconnection
-                    Broadcast("i", disconnecting_username + " has disconnected");
+                    Broadcast("i", username + " has disconnected");
                 }
             }
         }
@@ -233,6 +246,17 @@ namespace CS408_Server
                 connection.Close();
             }
             System.Windows.Forms.Application.Exit();
+        }
+
+        private void txtPort_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                btnListen.PerformClick();
+                // these last two lines will stop the beep sound
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+            }
         }
     }
 }
