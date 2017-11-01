@@ -192,12 +192,21 @@ namespace CS408_Server
                         });
                         for (int i = 0; i < username_list.Count; i++)
                         {
-                            connection.Send(Encoding.ASCII.GetBytes("g|" + username_list[i]));
+                            string currently_sending = username_list[i];
+                            txtInformation.Invoke((MethodInvoker)delegate
+                            {
+                                txtInformation.AppendText("\nSending: " + currently_sending);
+                            });
+                            connection.Send(Encoding.ASCII.GetBytes("g|" + currently_sending));
                         }
                     }
                     else if (message_flag == "m")
                     {
                         Broadcast("m", username + ": " + user_message);
+                        txtInformation.Invoke((MethodInvoker)delegate
+                        {
+                            txtInformation.AppendText("\n" + username + ": " + user_message);
+                        });
                     }
                     else
                     {
@@ -205,7 +214,6 @@ namespace CS408_Server
                         {
                             txtInformation.AppendText("\nwhoopise");
                         });
-                        
                     }
                 }
                 catch
