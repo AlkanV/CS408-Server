@@ -25,8 +25,31 @@ namespace CS408_Server
         Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         // 0.3 - Client data
-        List<Socket> socketList = new List<Socket>();
-        List<string> username_list = new List<string>();
+        private struct Client
+        {
+            public Socket socket;
+            public string username;
+            public bool isInGame;
+
+            public override bool Equals(object obj)
+            {
+                return obj is Client && this == (Client)obj;
+            }
+            public override int GetHashCode()
+            {
+                return socket.GetHashCode();
+            }
+            public static bool operator==(Client lhs, Client rhs)
+            {
+                return lhs.socket == rhs.socket;
+            }
+            public static bool operator !=(Client lhs, Client rhs)
+            {
+                return lhs.socket != rhs.socket;
+            }
+        }
+
+        List<Client> clients = new List<Client>();
 
         public FormServer()
         {
@@ -51,7 +74,7 @@ namespace CS408_Server
             int serverPort = Convert.ToInt32(txtPort.Text);
             txtPort.Clear();
 
-            if(serverPort < 0 || serverPort > 9999)
+            if (serverPort < 0 || serverPort > 9999)
             {
                 MessageBox.Show("Port Number should be between 0 and 9999", "Invalid Port Number", MessageBoxButtons.OK);
             }
@@ -60,7 +83,7 @@ namespace CS408_Server
                 txtPort.ReadOnly = true;
                 btnListen.Enabled = false;
                 // Start a thread responsible for listening for new connections
-                Thread thrAccept;
+                Thread thrAccept = new Thread(() => { });
 
                 try
                 {
@@ -92,9 +115,12 @@ namespace CS408_Server
             {
                 try
                 {
-                    socketList.Add(server.Accept());
+                    Socket newConnection = server.Accept();
+                    Client newClient = new Client();
+                    newClient.socket = newConnection;
+                    clients.Add(newClient);
                     // Start a thread responsible for receiving data over the new socket
-                    Thread thrReceive = new Thread(new ThreadStart(Receive));
+                    Thread thrReceive = new Thread(() => Receive(ref newClient));
                     thrReceive.IsBackground = true; // so that the thread stops when the program terminates!
                     thrReceive.Start();
                 }
@@ -112,24 +138,30 @@ namespace CS408_Server
         {
             // message_flag is one of: "i", "e", "m"
             // message content is the string associated with message
-            foreach (Socket client in socketList)
+            foreach (Client client in clients)
             {
-                client.Send(Encoding.ASCII.GetBytes(message_flag + "|[" + DateTime.Now.ToString(@"MM\/dd\/yyyy h\:mm tt") + "] "
+                client.socket.Send(Encoding.ASCII.GetBytes(message_flag + "|[" + DateTime.Now.ToString(@"MM\/dd\/yyyy h\:mm tt") + "] "
                     + message_content));
             }
         }
 
-        private void Receive()
+        private void Receive(ref Client client)
         {
             /* There are two message flags:
              * 1) "u|<username>" -> username input
              * 2) "g|" -> request to get the list of players
              * 3) "m|" -> chat message
              * 4) "i|" -> info
+             * 5) "v|" -> invite request
+             * 6) "r|" -> invite response
              */
+            
             bool connected = true;
-            Socket connection = socketList[socketList.Count - 1];
+            Socket connection = client.socket;
+
             string username = ""; // username of the current client
+            bool awaiting_invitation_response = false;
+            Client invitation_sent_to;
 
             while (connected)
             {
@@ -154,9 +186,9 @@ namespace CS408_Server
                         username = user_message;
                         // 1 - Check if the username is valid
                         bool isExistingUsername = false;
-                        foreach(string existing_user in username_list)
+                        foreach (Client client_i in clients)
                         {
-                            if (username == existing_user)
+                            if (username == client_i.username)
                             {
                                 connection.Send(Encoding.ASCII.GetBytes("e|username already exists"));
                                 isExistingUsername = true;
@@ -166,8 +198,8 @@ namespace CS408_Server
                         if (!isExistingUsername)
                         {
                             // 1 - Perform modificitions to server data
-                            username_list.Add(username); // add the username to the list of usernames
-                                                         // display the username in the listbox
+                            client.username = username; // add the username to the list of usernames
+                                                        // display the username in the listbox
                             lstUsers.Invoke((MethodInvoker)delegate
                             {
                                 lstUsers.Items.Add(username);
@@ -190,9 +222,9 @@ namespace CS408_Server
                         {
                             txtInformation.AppendText("\nSending user list to " + username);
                         });
-                        for (int i = 0; i < username_list.Count; i++)
+                        for (int i = 0; i < clients.Count; i++)
                         {
-                            string currently_sending = username_list[i];
+                            string currently_sending = clients[i].username;
                             txtInformation.Invoke((MethodInvoker)delegate
                             {
                                 txtInformation.AppendText("\nSending: " + currently_sending);
@@ -207,6 +239,44 @@ namespace CS408_Server
                         {
                             txtInformation.AppendText("\n" + username + ": " + user_message);
                         });
+                    }
+                    else if (message_flag == "v" || message_flag == "r")
+                    {
+                        if (message_flag == "r" && awaiting_invitation_response)
+                        {
+                            awaiting_invitation_response = false;
+                            if (message_content[1] == "1")
+                            {
+                                // response is accepted
+                                client.socket.Send(Encoding.ASCII.GetBytes("r|1"));
+                            }
+                            else
+                            {
+                                // response is declined
+                                client.socket.Send(Encoding.ASCII.GetBytes("r|0"));
+                            }
+                        }
+                        else
+                        {
+                            Client find_result = clients.Find(x => x.username == message_content[1]);
+                            if (find_result == default(Client))
+                            {
+                                // username not found!
+                                client.socket.Send(Encoding.ASCII.GetBytes("i|" + message_content[1] + " not found"));
+                            }
+                            else if (find_result.isInGame)
+                            {
+                                // <username> is in game
+                                client.socket.Send(Encoding.ASCII.GetBytes("i|" + message_content[1] + " is in game"));
+                            }
+                            else
+                            {
+                                // <username> is available, act according to response
+                                find_result.socket.Send(Encoding.ASCII.GetBytes("v|" + message_content[1]));
+                                invitation_sent_to = find_result;
+                                awaiting_invitation_response = true;
+                            }
+                        }
                     }
                     else
                     {
@@ -228,8 +298,7 @@ namespace CS408_Server
                     // Close connection and remove all user data
                     connection.Close();
                     connected = false;
-                    socketList.Remove(connection);
-                    username_list.Remove(username);
+                    clients.Remove(client);
 
                     // Remove displayed items
                     lstUsers.Invoke((MethodInvoker)delegate
@@ -248,10 +317,10 @@ namespace CS408_Server
             txtInformation.AppendText("\nTerminating connections");
             serverTerminating = true;
             serverListening = false;
-            foreach(Socket connection in socketList)
+            foreach (Client client in clients)
             {
-                connection.Shutdown(SocketShutdown.Both);
-                connection.Close();
+                client.socket.Shutdown(SocketShutdown.Both);
+                client.socket.Close();
             }
             System.Windows.Forms.Application.Exit();
         }
