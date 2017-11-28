@@ -29,7 +29,7 @@ namespace CS408_Server
         {
             public Socket socket;
             public string username;
-            public bool isInGame;
+            public bool isInGame = false;
 
             public override bool Equals(object obj)
             {
@@ -155,7 +155,7 @@ namespace CS408_Server
 
         private void Receive(ref Client client)
         {
-            /* There are two message flags:
+            /* These are the message flags:
              * 1) "u|<username>" -> username input
              * 2) "g|" -> request to get the list of players
              * 3) "m|" -> chat message
@@ -238,6 +238,11 @@ namespace CS408_Server
                         Broadcast("m", username + ": " + user_message);
                         DisplayInfo(username + ": " + user_message);
                     }
+                    else if (message_flag == "a")
+                    {
+                        if (user_message == "1")
+                            client.isInGame = true;
+                    }
                     else if (message_flag == "v" || message_flag == "r")
                     {
                         if (message_flag == "r")
@@ -248,13 +253,13 @@ namespace CS408_Server
                                 client.socket.Send(Encoding.ASCII.GetBytes("r|1"));
                                 DisplayInfo(invitation_sent_to.username + " has accepted invitation from " + username);
                             }
-                            else
+                            else // response is 0
                             {
                                 // response is declined
                                 client.socket.Send(Encoding.ASCII.GetBytes("r|0"));
                             }
                         }
-                        else
+                        else //flag v
                         {
                             Client find_result = clients.Find(x => x.username == message_content[1]);
                             if (find_result.username.Length < 8)
