@@ -25,7 +25,7 @@ namespace CS408_Server
         Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         // 0.3 - Client data
-        private struct Client
+        private class Client
         {
             public Socket socket;
             public string username;
@@ -145,6 +145,14 @@ namespace CS408_Server
             }
         }
 
+        private void DisplayInfo(string message)
+        {
+            txtInformation.Invoke((MethodInvoker)delegate
+            {
+                txtInformation.AppendText(message + "\n");
+            });
+        }
+
         private void Receive(ref Client client)
         {
             /* There are two message flags:
@@ -160,8 +168,7 @@ namespace CS408_Server
             Socket connection = client.socket;
 
             string username = ""; // username of the current client
-            bool awaiting_invitation_response = false;
-            Client invitation_sent_to;
+            Client invitation_sent_to = new Client();
 
             while (connected)
             {
@@ -179,6 +186,10 @@ namespace CS408_Server
                     incoming_message = incoming_message.Substring(0, incoming_message.IndexOf('\0'));
 
                     string[] message_content = incoming_message.Split('|');
+                    if (message_content.Count() == 0)
+                    {
+                        continue;
+                    }
                     string message_flag = message_content[0], user_message = message_content[1];
 
                     if (message_flag == "u")
@@ -205,10 +216,7 @@ namespace CS408_Server
                                 lstUsers.Items.Add(username);
                             });
 
-                            txtInformation.Invoke((MethodInvoker)delegate
-                            {
-                                txtInformation.AppendText("\n" + username + " has connected");
-                            });
+                            DisplayInfo(username + " has connected");
                             // 2 - Send back successful connection flag
                             connection.Send(Encoding.ASCII.GetBytes("i|connection successful"));
 
@@ -218,37 +226,27 @@ namespace CS408_Server
                     }
                     else if (message_flag == "g")
                     {
-                        txtInformation.Invoke((MethodInvoker)delegate
-                        {
-                            txtInformation.AppendText("\nSending user list to " + username);
-                        });
+                        DisplayInfo("Sending user list to " + username);
                         for (int i = 0; i < clients.Count; i++)
                         {
                             string currently_sending = clients[i].username;
-                            txtInformation.Invoke((MethodInvoker)delegate
-                            {
-                                txtInformation.AppendText("\nSending: " + currently_sending);
-                            });
                             connection.Send(Encoding.ASCII.GetBytes("g|" + currently_sending));
                         }
                     }
                     else if (message_flag == "m")
                     {
                         Broadcast("m", username + ": " + user_message);
-                        txtInformation.Invoke((MethodInvoker)delegate
-                        {
-                            txtInformation.AppendText("\n" + username + ": " + user_message);
-                        });
+                        DisplayInfo(username + ": " + user_message);
                     }
                     else if (message_flag == "v" || message_flag == "r")
                     {
-                        if (message_flag == "r" && awaiting_invitation_response)
+                        if (message_flag == "r")
                         {
-                            awaiting_invitation_response = false;
                             if (message_content[1] == "1")
                             {
                                 // response is accepted
                                 client.socket.Send(Encoding.ASCII.GetBytes("r|1"));
+                                DisplayInfo(invitation_sent_to.username + " has accepted invitation from " + username);
                             }
                             else
                             {
@@ -259,7 +257,7 @@ namespace CS408_Server
                         else
                         {
                             Client find_result = clients.Find(x => x.username == message_content[1]);
-                            if (find_result == default(Client))
+                            if (find_result.username.Length < 8)
                             {
                                 // username not found!
                                 client.socket.Send(Encoding.ASCII.GetBytes("i|" + message_content[1] + " not found"));
@@ -272,9 +270,10 @@ namespace CS408_Server
                             else
                             {
                                 // <username> is available, act according to response
-                                find_result.socket.Send(Encoding.ASCII.GetBytes("v|" + message_content[1]));
+                                string client_username = client.username;
+                                find_result.socket.Send(Encoding.ASCII.GetBytes("v|" + client_username));
+                                DisplayInfo(client_username + " has sent an invitation to " + find_result.username);
                                 invitation_sent_to = find_result;
-                                awaiting_invitation_response = true;
                             }
                         }
                     }
