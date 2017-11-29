@@ -162,6 +162,8 @@ namespace CS408_Server
              * 4) "i|" -> info
              * 5) "v|" -> invite request
              * 6) "r|" -> invite response
+             * 7) "a|" -> isInGame verifier
+             * 8) "s|" -> surrender
              */
             
             bool connected = true;
@@ -169,6 +171,7 @@ namespace CS408_Server
 
             string username = ""; // username of the current client
             Client invitation_sent_to = new Client();
+            Client invitation_received_from = new Client();
 
             while (connected)
             {
@@ -204,6 +207,9 @@ namespace CS408_Server
                                 connection.Send(Encoding.ASCII.GetBytes("e|username already exists"));
                                 isExistingUsername = true;
                                 connection.Close();
+                                connected = false;
+                                clients.Remove(client);
+                                break;
                             }
                         }
                         if (!isExistingUsername)
@@ -230,6 +236,8 @@ namespace CS408_Server
                         for (int i = 0; i < clients.Count; i++)
                         {
                             string currently_sending = clients[i].username;
+                            Thread.Sleep(20);
+                            //DisplayInfo("Bunu yazmadan olmuyo");
                             connection.Send(Encoding.ASCII.GetBytes("g|" + currently_sending));
                         }
                     }
@@ -250,8 +258,18 @@ namespace CS408_Server
                             if (message_content[1] == "1")
                             {
                                 // response is accepted
-                                client.socket.Send(Encoding.ASCII.GetBytes("r|1"));
-                                DisplayInfo(invitation_sent_to.username + " has accepted invitation from " + username);
+                                // find the invite sender
+                                Client find_result = clients.Find(x => x.username == message_content[2]);
+                                if (find_result.username.Length < 8)
+                                {
+                                    DisplayInfo("Invite sender has disconnected from the server!");
+                                }
+                                else
+                                {
+                                    find_result.socket.Send(Encoding.ASCII.GetBytes("r|1"));
+                                    Thread.Sleep(20);
+                                    DisplayInfo(find_result.username + " has accepted invitation from " + username);
+                                }
                             }
                             else // response is 0
                             {
@@ -277,8 +295,24 @@ namespace CS408_Server
                                 // <username> is available, act according to response
                                 string client_username = client.username;
                                 find_result.socket.Send(Encoding.ASCII.GetBytes("v|" + client_username));
-                                DisplayInfo(client_username + " has sent an invitation to " + find_result.username);
+                                DisplayInfo(find_result.username + " has sent an invitation to " + client_username);
                                 invitation_sent_to = find_result;
+                            }
+                        }
+                    }
+                    else if (message_flag == "s")
+                    {
+                        Client find_result = clients.Find(x => x.username == message_content[2]);
+                        if (find_result.username.Length < 8)
+                        {
+                            DisplayInfo("Your opponent, " + message_content[2] + ", has disconnected!");
+                            //client.socket.Send(Encoding.ASCII.GetBytes("s|1"));
+                        }
+                        else
+                        {
+                            if (message_content[1] == "1")
+                            {
+                                find_result.socket.Send(Encoding.ASCII.GetBytes("s|1"));
                             }
                         }
                     }
@@ -286,7 +320,7 @@ namespace CS408_Server
                     {
                         txtInformation.Invoke((MethodInvoker)delegate
                         {
-                            txtInformation.AppendText("\nwhoopise");
+                            txtInformation.AppendText("\nwhoopise - unidentified flag encountered");
                         });
                     }
                 }
