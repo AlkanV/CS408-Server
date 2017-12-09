@@ -140,6 +140,7 @@ namespace CS408_Server
             // message content is the string associated with message
             foreach (Client client in clients)
             {
+                Thread.Sleep(20);
                 client.socket.Send(Encoding.ASCII.GetBytes(message_flag + "|[" + DateTime.Now.ToString(@"MM\/dd\/yyyy h\:mm tt") + "] "
                     + message_content));
             }
@@ -204,6 +205,7 @@ namespace CS408_Server
                         {
                             if (username == client_i.username)
                             {
+                                Thread.Sleep(20);
                                 connection.Send(Encoding.ASCII.GetBytes("e|username already exists"));
                                 isExistingUsername = true;
                                 connection.Close();
@@ -222,8 +224,10 @@ namespace CS408_Server
                                 lstUsers.Items.Add(username);
                             });
 
+                            Thread.Sleep(20);
                             DisplayInfo(username + " has connected");
                             // 2 - Send back successful connection flag
+                            Thread.Sleep(20);
                             connection.Send(Encoding.ASCII.GetBytes("i|connection successful"));
 
                             // 3 - Inform each client about the new connection
@@ -232,6 +236,7 @@ namespace CS408_Server
                     }
                     else if (message_flag == "g")
                     {
+                        Thread.Sleep(20);
                         DisplayInfo("Sending user list to " + username);
                         for (int i = 0; i < clients.Count; i++)
                         {
@@ -243,7 +248,9 @@ namespace CS408_Server
                     }
                     else if (message_flag == "m")
                     {
+                        Thread.Sleep(20);
                         Broadcast("m", username + ": " + user_message);
+                        Thread.Sleep(20);
                         DisplayInfo(username + ": " + user_message);
                     }
                     else if (message_flag == "a")
@@ -262,10 +269,12 @@ namespace CS408_Server
                                 Client find_result = clients.Find(x => x.username == message_content[2]);
                                 if (find_result.username.Length < 8)
                                 {
+                                    Thread.Sleep(20);
                                     DisplayInfo("Invite sender has disconnected from the server!");
                                 }
                                 else
                                 {
+                                    Thread.Sleep(20);
                                     find_result.socket.Send(Encoding.ASCII.GetBytes("r|1"));
                                     Thread.Sleep(20);
                                     DisplayInfo(find_result.username + " has accepted invitation from " + username);
@@ -274,6 +283,7 @@ namespace CS408_Server
                             else // response is 0
                             {
                                 // response is declined
+                                Thread.Sleep(20);
                                 client.socket.Send(Encoding.ASCII.GetBytes("r|0"));
                             }
                         }
@@ -283,18 +293,22 @@ namespace CS408_Server
                             if (find_result.username.Length < 8)
                             {
                                 // username not found!
+                                Thread.Sleep(20);
                                 client.socket.Send(Encoding.ASCII.GetBytes("i|" + message_content[1] + " not found"));
                             }
                             else if (find_result.isInGame)
                             {
                                 // <username> is in game
+                                Thread.Sleep(20);
                                 client.socket.Send(Encoding.ASCII.GetBytes("i|" + message_content[1] + " is in game"));
                             }
                             else
                             {
                                 // <username> is available, act according to response
                                 string client_username = client.username;
+                                Thread.Sleep(20);
                                 find_result.socket.Send(Encoding.ASCII.GetBytes("v|" + client_username));
+                                Thread.Sleep(20);
                                 DisplayInfo(find_result.username + " has sent an invitation to " + client_username);
                                 invitation_sent_to = find_result;
                             }
@@ -305,13 +319,16 @@ namespace CS408_Server
                         Client find_result = clients.Find(x => x.username == message_content[2]);
                         if (find_result.username.Length < 8)
                         {
+                            Thread.Sleep(20);
                             DisplayInfo("Your opponent, " + message_content[2] + ", has disconnected!");
-                            //client.socket.Send(Encoding.ASCII.GetBytes("s|1"));
+                            Thread.Sleep(20);
+                            client.socket.Send(Encoding.ASCII.GetBytes("s|1"));
                         }
                         else
                         {
                             if (message_content[1] == "1")
                             {
+                                Thread.Sleep(20);
                                 find_result.socket.Send(Encoding.ASCII.GetBytes("s|1"));
                             }
                         }
