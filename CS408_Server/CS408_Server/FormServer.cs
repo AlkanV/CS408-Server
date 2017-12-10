@@ -323,6 +323,7 @@ namespace CS408_Server
                     else if (message_flag == "s")
                     {
                         Client find_result = clients.Find(x => x.username == message_content[2]);
+                        Thread.Sleep(20);
                         if (find_result.username.Length < 8)
                         {
                             Thread.Sleep(20);
