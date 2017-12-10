@@ -256,7 +256,13 @@ namespace CS408_Server
                     else if (message_flag == "a")
                     {
                         if (user_message == "1")
+                        {
                             client.isInGame = true;
+                        }
+                        else
+                        {
+                            client.isInGame = false;
+                        }
                     }
                     else if (message_flag == "v" || message_flag == "r")
                     {
