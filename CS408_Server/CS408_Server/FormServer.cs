@@ -35,6 +35,8 @@ namespace CS408_Server
             public Client opponent;
             public int randomNumber; // for game
             public int guessedNumber;
+            public int globalScore;
+            public int gameScore;
 
             public override bool Equals(object obj)
             {
@@ -126,6 +128,8 @@ namespace CS408_Server
                     newClient.socket = newConnection;
                     newClient.guessedNumber = 0;
                     newClient.randomNumber = 0;
+                    newClient.gameScore = 0;
+                    newClient.globalScore = 0;
                     clients.Add(newClient);
                     // Start a thread responsible for receiving data over the new socket
                     Thread thrReceive = new Thread(() => Receive(ref newClient));
@@ -176,6 +180,8 @@ namespace CS408_Server
              * 9) "e|" -> guess number
              * 10)"x|" -> game start [sent to clients to notify start of the game]
              * 11)"f|" -> game finish
+             * 12)"w|" -> game end indicator
+             * 13)"j|" -> opponent disconnection indicator
              */
             
             bool connected = true;
@@ -194,7 +200,8 @@ namespace CS408_Server
 
                     if (received <= 0)
                     {
-                        throw new SocketException();
+                        continue;
+                        //throw new SocketException();
                     }
 
                     string incoming_message = Encoding.Default.GetString(buffer);
@@ -280,6 +287,7 @@ namespace CS408_Server
                                 { // <client> is NOT the first to send a|1
                                     client.randomNumber = client.opponent.randomNumber;
                                     byte[] messageByte = ASCIIEncoding.ASCII.GetBytes("x|");
+                                    Thread.Sleep(20);
                                     client.socket.Send(messageByte);
                                     client.opponent.socket.Send(messageByte);
                                 }
@@ -388,6 +396,7 @@ namespace CS408_Server
                             if (diffClient < diffOpponent)
                             {
                                 client.socket.Send(Encoding.ASCII.GetBytes("f|" + 0)); // 0 -> win
+                                client.gameScore++;
                             }
                             else if (diffClient > diffOpponent)
                             {
@@ -396,6 +405,28 @@ namespace CS408_Server
                             else
                             {
                                 client.socket.Send(Encoding.ASCII.GetBytes("f|" + 2)); // 2 -> tie
+                            }
+
+                            if (client.gameScore == 2 || client.opponent.gameScore == 2)
+                            {
+                                client.socket.Send(Encoding.ASCII.GetBytes("w|1"));
+                                if (client.gameScore == 2)
+                                {
+                                    client.globalScore++;
+                                    string usernm = client.username;
+                                    int newGlobalScore = client.globalScore;
+                                    lstUsers.Invoke((MethodInvoker)delegate
+                                    {
+                                        string current_username = usernm;
+                                        for (int i =0; i < lstUsers.Items.Count; i++)
+                                        {
+                                            if (lstUsers.Items[i].ToString() == current_username)
+                                            {
+                                                lstUsers.Items[i] = current_username + " [" + newGlobalScore + "]";
+                                            }
+                                        }
+                                    });
+                                }
                             }
                         }
                         Thread.EndCriticalRegion();
@@ -421,6 +452,11 @@ namespace CS408_Server
                     connection.Close();
                     connected = false;
                     clients.Remove(client);
+                    if (client.opponent != null && client.opponent.opponent != null 
+                        && client.opponent.opponent.username == client.username && client.opponent.isInGame)
+                    {
+                        client.opponent.socket.Send(Encoding.ASCII.GetBytes("j|"));
+                    }
 
                     // Remove displayed items
                     lstUsers.Invoke((MethodInvoker)delegate
