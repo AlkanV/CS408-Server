@@ -397,18 +397,24 @@ namespace CS408_Server
                             {
                                 client.socket.Send(Encoding.ASCII.GetBytes("f|" + 0)); // 0 -> win
                                 client.gameScore++;
+                                client.opponent.socket.Send(Encoding.ASCII.GetBytes("f|" + 1)); // 0 -> false
                             }
                             else if (diffClient > diffOpponent)
                             {
+                                client.opponent.socket.Send(Encoding.ASCII.GetBytes("f|" + 0)); // 0 -> win
+                                client.opponent.gameScore++;
                                 client.socket.Send(Encoding.ASCII.GetBytes("f|" + 1)); // 1 -> loss
                             }
                             else
                             {
                                 client.socket.Send(Encoding.ASCII.GetBytes("f|" + 2)); // 2 -> tie
+                                client.opponent.socket.Send(Encoding.ASCII.GetBytes("f|" + 2)); // 2 -> tie
                             }
-
+                            client.guessedNumber = 0;
+                            client.opponent.guessedNumber = 0;
                             if (client.gameScore == 2 || client.opponent.gameScore == 2)
                             {
+                                client.opponent.socket.Send(Encoding.ASCII.GetBytes("w|1"));
                                 client.socket.Send(Encoding.ASCII.GetBytes("w|1"));
                                 if (client.gameScore == 2)
                                 {
