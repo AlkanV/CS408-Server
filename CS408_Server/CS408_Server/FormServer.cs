@@ -20,6 +20,8 @@ namespace CS408_Server
         bool acceptConnections = true;
         bool serverListening = false;
         bool serverTerminating = false;
+        Random RNG;
+        private Object thisLock = new Object();
 
         // 0.2 - Server
         Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -30,6 +32,9 @@ namespace CS408_Server
             public Socket socket;
             public string username;
             public bool isInGame = false;
+            public Client opponent;
+            public int randomNumber; // for game
+            public int guessedNumber;
 
             public override bool Equals(object obj)
             {
@@ -54,6 +59,7 @@ namespace CS408_Server
         public FormServer()
         {
             InitializeComponent();
+            RNG = new Random();
         }
 
         private string getLocalIP() //Returns the ip of the server
@@ -118,6 +124,8 @@ namespace CS408_Server
                     Socket newConnection = server.Accept();
                     Client newClient = new Client();
                     newClient.socket = newConnection;
+                    newClient.guessedNumber = 0;
+                    newClient.randomNumber = 0;
                     clients.Add(newClient);
                     // Start a thread responsible for receiving data over the new socket
                     Thread thrReceive = new Thread(() => Receive(ref newClient));
@@ -136,7 +144,7 @@ namespace CS408_Server
 
         private void Broadcast(string message_flag, string message_content)
         {
-            // message_flag is one of: "i", "e", "m"
+            // message_flag is one of: "i", "m"
             // message content is the string associated with message
             foreach (Client client in clients)
             {
@@ -165,6 +173,9 @@ namespace CS408_Server
              * 6) "r|" -> invite response
              * 7) "a|" -> isInGame verifier
              * 8) "s|" -> surrender
+             * 9) "e|" -> guess number
+             * 10)"x|" -> game start [sent to clients to notify start of the game]
+             * 11)"f|" -> game finish
              */
             
             bool connected = true;
@@ -257,11 +268,28 @@ namespace CS408_Server
                     {
                         if (user_message == "1")
                         {
-                            client.isInGame = true;
+                            lock(thisLock)
+                            {
+                                if (client.opponent.randomNumber == 0) // <client> is the first to send a|1
+                                {
+                                    int randNum = RNG.Next(1, 100);
+                                    client.randomNumber = randNum;
+                                    client.isInGame = true;
+                                }
+                                else
+                                { // <client> is NOT the first to send a|1
+                                    client.randomNumber = client.opponent.randomNumber;
+                                    byte[] messageByte = ASCIIEncoding.ASCII.GetBytes("x|");
+                                    client.socket.Send(messageByte);
+                                    client.opponent.socket.Send(messageByte);
+                                }
+                            }
                         }
                         else
                         {
                             client.isInGame = false;
+                            client.randomNumber = 0;
+                            client.opponent = null;
                         }
                     }
                     else if (message_flag == "v" || message_flag == "r")
@@ -284,6 +312,8 @@ namespace CS408_Server
                                     find_result.socket.Send(Encoding.ASCII.GetBytes("r|1"));
                                     Thread.Sleep(20);
                                     DisplayInfo(find_result.username + " has accepted invitation from " + username);
+                                    client.opponent = find_result;
+                                    find_result.opponent = client;
                                 }
                             }
                             else // response is 0
@@ -339,6 +369,36 @@ namespace CS408_Server
                                 find_result.socket.Send(Encoding.ASCII.GetBytes("s|1"));
                             }
                         }
+                    }
+                    else if (message_flag == "e")
+                    {
+                        int number;
+                        if (!int.TryParse(message_content[1], out number))
+                        {
+                            DisplayInfo("cannot convert \"" + message_content[1] + "\" to int");
+                            continue;
+                        }
+
+                        Thread.BeginCriticalRegion();
+                        client.guessedNumber = number;
+                        if (client.opponent.guessedNumber != 0)
+                        {
+                            int diffClient = Math.Abs(client.guessedNumber - client.randomNumber);
+                            int diffOpponent = Math.Abs(client.opponent.guessedNumber - client.randomNumber);
+                            if (diffClient < diffOpponent)
+                            {
+                                client.socket.Send(Encoding.ASCII.GetBytes("f|" + 0)); // 0 -> win
+                            }
+                            else if (diffClient > diffOpponent)
+                            {
+                                client.socket.Send(Encoding.ASCII.GetBytes("f|" + 1)); // 1 -> loss
+                            }
+                            else
+                            {
+                                client.socket.Send(Encoding.ASCII.GetBytes("f|" + 2)); // 2 -> tie
+                            }
+                        }
+                        Thread.EndCriticalRegion();
                     }
                     else
                     {
