@@ -318,7 +318,7 @@ namespace CS408_Server
                                 {
                                     Thread.Sleep(20);
                                     find_result.socket.Send(Encoding.ASCII.GetBytes("r|1"));
-                                    Thread.Sleep(20);
+                                    //Thread.Sleep(20);
                                     DisplayInfo(find_result.username + " has accepted invitation from " + username);
                                     client.opponent = find_result;
                                     find_result.opponent = client;
