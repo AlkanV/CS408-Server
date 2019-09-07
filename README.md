@@ -1,1 +1,1 @@
-# CS408-Server Application
+# GameLobby.Server
